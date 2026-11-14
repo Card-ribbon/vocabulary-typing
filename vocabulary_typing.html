@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>英単語タイピング練習</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#172033;background:#f4f6fb}
+*{box-sizing:border-box}body{margin:0;padding:24px;min-height:100vh}
+main{max-width:900px;margin:auto}.panel{background:white;border:1px solid #e1e6f0;border-radius:18px;padding:22px;box-shadow:0 8px 28px #1720330b}
+h1{font-size:clamp(24px,4vw,34px);margin:0 0 8px}.muted{color:#68738a}.top{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:18px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+select,button,input{font:inherit;border-radius:10px;padding:11px 13px;border:1px solid #ccd4e2;background:white;color:inherit}
+button{cursor:pointer;font-weight:650}button.primary{background:#2457d6;color:white;border-color:#2457d6}button:hover{filter:brightness(.97)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}
+.stat{background:#f5f7fc;padding:12px;border-radius:12px}.stat b{display:block;font-size:23px;font-variant-numeric:tabular-nums}
+.progress{height:9px;background:#e8edf6;border-radius:20px;overflow:hidden}.bar{height:100%;width:0;background:#3567df;transition:width .2s}
+.prompt{text-align:center;padding:28px 10px 20px}.num{font-size:13px;color:#71809a}.meaning{font-size:clamp(25px,5vw,38px);font-weight:750;margin:10px 0 22px}
+#answer{width:min(100%,560px);font-size:22px;text-align:center;letter-spacing:.4px}
+.feedback{min-height:30px;margin:12px 0;font-weight:650}.ok{color:#16834a}.ng{color:#c03935}
+.row{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.small{font-size:13px}.hidden{display:none}
+table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:9px;border-bottom:1px solid #edf0f5;text-align:left}th{color:#68738a}
+@media(max-width:600px){body{padding:12px}.panel{padding:16px}.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><div><h1>英単語タイピング練習</h1><div class="muted">日本語を見て、英単語を正確にタイピングしよう。</div></div><div class="small muted">Vocabulary Catcher No.3・No.4</div></div>
+  <section class="panel">
+    <div class="controls">
+      <select id="range"><option value="all">No.3＋No.4 全範囲</option><option value="3">No.3</option><option value="4">No.4</option></select>
+      <select id="mode"><option value="random">ランダム出題</option><option value="order">番号順</option><option value="wrong">間違えた単語だけ</option></select>
+      <button id="restart">出題をリセット</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="muted small">今回の正解</span><b id="correct">0</b></div>
+      <div class="stat"><span class="muted small">回答数</span><b id="total">0</b></div>
+      <div class="stat"><span class="muted small">正答率</span><b id="rate">0%</b></div>
+      <div class="stat"><span class="muted small">残り</span><b id="left">0</b></div>
+    </div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="prompt">
+      <div class="num" id="label">No.3 / No.4</div>
+      <div class="meaning" id="meaning">読み込み中…</div>
+      <input id="answer" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ここに英単語を入力">
+      <div class="feedback" id="feedback" aria-live="polite"></div>
+      <div class="row">
+        <button class="primary" id="check">答え合わせ（Enter）</button>
+        <button id="skip">わからない・次へ</button>
+      </div>
+    </div>
+    <div class="small muted">※ 大文字・小文字は区別しません。スペースや記号は登録された表記どおりに入力してください。熟語もまとめて入力します。</div>
+  </section>
+  <section class="panel" style="margin-top:16px">
+    <div class="top"><strong>今回の結果</strong><button id="showWrong">間違えた単語を見る</button></div>
+    <div id="wrongList" class="hidden"></div>
+    <div class="small muted">学習記録はこのブラウザー内に保存されます。</div>
+  </section>
+</main>
+<script>
+// 単語データ：添付されたVocabulary Catcher No.3・No.4をもとに作成
+const words = [
+{n:1,s:3,w:"series",m:"シリーズ"},{n:2,s:3,w:"release",m:"～を公開する"},{n:3,s:3,w:"director",m:"監督"},{n:4,s:3,w:"inspire",m:"～を（…するよう）促す"},{n:5,s:3,w:"god",m:"神"},{n:6,s:3,w:"villager",m:"村人"},{n:7,s:3,w:"attack",m:"～を攻撃する"},{n:8,s:3,w:"discrimination",m:"差別"},{n:9,s:3,w:"struggle",m:"（～しようと）奮闘する"},{n:10,s:3,w:"huge",m:"非常に大きな"},
+{n:11,s:3,w:"success",m:"成功"},{n:12,s:3,w:"translate",m:"～を翻訳する"},{n:13,s:3,w:"community",m:"コミュニティ"},{n:14,s:3,w:"elderly",m:"年配の"},{n:15,s:3,w:"praise",m:"～を褒める"},{n:16,s:3,w:"pursue",m:"～を追求する"},{n:17,s:3,w:"career",m:"仕事，経歴"},{n:18,s:3,w:"graduation",m:"卒業"},{n:19,s:3,w:"remain",m:"残る，とどまる"},{n:20,s:3,w:"explore",m:"～を探る"},
+{n:21,s:3,w:"possibility",m:"可能性"},{n:22,s:3,w:"studio",m:"スタジオ"},{n:23,s:3,w:"minority",m:"マイノリティ，少数派"},{n:24,s:3,w:"outsider",m:"部外者"},{n:25,s:3,w:"wonder",m:"…だろうかと思う"},{n:26,s:3,w:"discriminate",m:"差別する"},{n:27,s:3,w:"awareness",m:"気づき"},{n:28,s:3,w:"aggressively",m:"攻撃的に"},{n:29,s:3,w:"admit",m:"～を認める"},{n:30,s:3,w:"used to",m:"かつては…だった"},
+{n:31,s:3,w:"argument",m:"口論"},{n:32,s:3,w:"concept",m:"概念"},{n:33,s:3,w:"racism",m:"人種差別"},{n:34,s:3,w:"force",m:"～に…することを強いる"},{n:35,s:3,w:"prejudice",m:"偏見"},{n:36,s:3,w:"reject",m:"～を拒絶する"},{n:37,s:3,w:"exclude",m:"～を排除する"},{n:38,s:3,w:"throughout",m:"～の間じゅう"},{n:39,s:3,w:"recognize",m:"～を認識する"},{n:40,s:3,w:"confront",m:"～に向き合う"},
+{n:41,s:3,w:"apologize",m:"謝る"},{n:42,s:3,w:"forgive",m:"～を許す"},{n:43,s:3,w:"potential",m:"（潜在的な）可能性"},{n:44,s:3,w:"avoid",m:"～を避ける"},{n:45,s:3,w:"overcome",m:"～を克服する"},{n:46,s:3,w:"in case",m:"～する場合に備えて"},{n:47,s:3,w:"deal with",m:"～に対処する"},{n:48,s:3,w:"those who …",m:"…である［する］人々"},{n:49,s:3,w:"one by one",m:"１つずつ"},{n:50,s:3,w:"the fact that …",m:"…という事実"},
+{n:51,s:3,w:"make fun of",m:"～をからかう"},{n:52,s:3,w:"according to",m:"～によると"},{n:53,s:3,w:"come to do",m:"～するようになる"},{n:54,s:3,w:"without doing",m:"～せずに"},{n:55,s:3,w:"behavior",m:"行動"},{n:56,s:3,w:"approach",m:"方法"},{n:57,s:3,w:"seem",m:"～のようだ"},{n:58,s:3,w:"properly",m:"きちんと"},{n:59,s:3,w:"hoop",m:"（バスケットボールの）ゴール"},{n:60,s:3,w:"toss",m:"～を投げ入れる"},
+{n:61,s:3,w:"indirect",m:"間接的な"},{n:62,s:3,w:"behave",m:"振る舞う"},{n:63,s:3,w:"willingly",m:"自発的に"},{n:64,s:3,w:"trigger",m:"仕掛け，引き金"},{n:65,s:3,w:"escalator",m:"エスカレーター"},{n:66,s:3,w:"experiment",m:"実験"},{n:67,s:3,w:"thus",m:"したがって"},{n:68,s:3,w:"bin",m:"ごみ入れ"},{n:69,s:3,w:"trash",m:"ごみ"},{n:70,s:3,w:"sensor",m:"センサー"},
+{n:71,s:3,w:"effective",m:"効果的な"},{n:72,s:3,w:"flexible",m:"柔軟な"},{n:73,s:3,w:"motivate",m:"～を動機付ける"},{n:74,s:3,w:"manner",m:"方法，やり方"},{n:75,s:3,w:"perspective",m:"見方，視点"},{n:76,s:3,w:"disease",m:"病気"},{n:77,s:3,w:"regularly",m:"習慣的に"},{n:78,s:3,w:"eager",m:"熱望して"},{n:79,s:3,w:"victim",m:"被災者，犠牲者"},{n:80,s:3,w:"sheet",m:"一枚（の紙）"},
+{n:81,s:3,w:"promote",m:"～を促す"},{n:82,s:3,w:"disaster",m:"災害"},{n:83,s:3,w:"attract",m:"～を引き付ける"},{n:84,s:3,w:"renovation",m:"修復"},{n:85,s:3,w:"contributor",m:"寄付者"},{n:86,s:3,w:"register",m:"～を登録する"},{n:87,s:3,w:"lord",m:"君主，領主"},{n:88,s:3,w:"nearly",m:"ほぼ，～近く"},{n:89,s:3,w:"reconstruction",m:"復興"},{n:90,s:3,w:"How about ～?",m:"～についてはどうか。"},
+{n:91,s:3,w:"put away",m:"～を片付ける"},{n:92,s:3,w:"instead of",m:"～の代わりに"},{n:93,s:3,w:"go up",m:"～をのぼる"},{n:94,s:3,w:"go down",m:"～をおりる"},{n:95,s:3,w:"throw away",m:"～を捨てる"},{n:96,s:3,w:"for instance",m:"例えば"},{n:97,s:3,w:"die from",m:"～（が原因）で死ぬ"},{n:98,s:3,w:"more than",m:"～を超える"},{n:99,s:3,w:"take ~as an example",m:"～を例にとる"},{n:100,s:3,w:"take advantage of~",m:"～を活用する"},
+{n:101,s:3,w:"forehead",m:"額"},{n:102,s:3,w:"familiar",m:"なじみ深い"},{n:103,s:3,w:"lift",m:"（気持ちなどを）高揚させる"},{n:104,s:3,w:"chest",m:"胸"},{n:105,s:3,w:"immediately",m:"ただちに，すぐさま"},{n:106,s:3,w:"burst into ~",m:"突然～し始める"},{n:107,s:3,w:"reality",m:"現実"},{n:108,s:3,w:"complicated",m:"複雑な"},{n:109,s:3,w:"flood",m:"洪水"},{n:110,s:3,w:"politely",m:"礼儀正しく，丁寧に"},
+{n:111,s:3,w:"comfort",m:"慰め，快適さ"},{n:112,s:3,w:"on the other hand",m:"一方で"},{n:113,s:3,w:"at ease",m:"くつろいで，気楽に"},{n:114,s:3,w:"to one’s surprise",m:"（人が）驚いたことに"},{n:115,s:3,w:"absolutely",m:"完全に"},{n:116,s:3,w:"imaginary",m:"想像上の"},{n:117,s:3,w:"hallway",m:"廊下"},{n:118,s:3,w:"childish",m:"子どもっぽい"},{n:119,s:3,w:"mutter",m:"つぶやく"},{n:120,s:3,w:"annoyance",m:"いらだち"},
+{n:121,s:3,w:"miserable",m:"みじめな，悲惨な"},{n:122,s:3,w:"argue",m:"反対する，異議を唱える"},{n:123,s:3,w:"disappointment",m:"失望，落胆"},{n:124,s:3,w:"silly",m:"ばかな，愚かな"},{n:125,s:3,w:"light up",m:"明るくなる，点灯する"},{n:126,s:3,w:"determination",m:"決心，決意"},{n:127,s:3,w:"head toward ~",m:"～に向かう"},{n:128,s:3,w:"purpose",m:"目的，目標"},{n:129,s:3,w:"set out",m:"出発する"},{n:130,s:3,w:"confidence",m:"自信，信頼"},
+{n:131,s:3,w:"midday",m:"真昼，正午"},{n:132,s:3,w:"go by",m:"通り過ぎる"},{n:133,s:3,w:"environment",m:"環境"},{n:134,s:3,w:"attractive",m:"魅力的な"},{n:135,s:3,w:"surrounding",m:"周辺地域，環境"},{n:136,s:3,w:"livable",m:"住みやすい"},{n:137,s:3,w:"comfortable",m:"快適な"},{n:138,s:3,w:"neighborhood",m:"（特定の特色を有する）地域，地区"},{n:139,s:3,w:"restrict",m:"～を制限する"},{n:140,s:3,w:"breathe",m:"～を吸う"},
+{n:141,s:3,w:"healthy",m:"健康的な"},{n:142,s:3,w:"include",m:"～を含む"},{n:143,s:3,w:"charge",m:"～を請求する"},{n:144,s:3,w:"congestion",m:"（道路などの）混雑，渋滞"},{n:145,s:3,w:"fee",m:"料金"},{n:146,s:3,w:"as a result",m:"結果的に，結果として"},{n:147,s:3,w:"public",m:"公共の"},{n:148,s:3,w:"traffic jam",m:"交通渋滞"},{n:149,s:3,w:"introduce",m:"～を導入する"},{n:150,s:3,w:"reduce",m:"～を減らす"},
+{n:151,s:3,w:"seem to (do)",m:"～する（である）と思われる"},{n:152,s:3,w:"as well",m:"～もまた，同様に"},{n:153,s:3,w:"entertainment",m:"娯楽"},{n:154,s:3,w:"connect A to B",m:"AをBにつなぐ"},{n:155,s:3,w:"preserve",m:"～を保存する"},{n:156,s:3,w:"ancient",m:"古代の"},{n:157,s:3,w:"historical site",m:"史跡，遺跡"},{n:158,s:3,w:"fill A with B",m:"AをBで満たす"},{n:159,s:3,w:"diner",m:"（飲食店で）食事をする人"},{n:160,s:3,w:"economic",m:"経済的な"},
+{n:161,s:3,w:"opportunity",m:"機会"},{n:162,s:3,w:"provide",m:"～を供給する，提供する"},{n:163,s:3,w:"improve",m:"～を改善する，向上させる"},{n:164,s:3,w:"generally",m:"一般的に，全体的に"},{n:165,s:3,w:"current",m:"現在の"},{n:166,s:3,w:"trend",m:"傾向，流行"},{n:167,s:3,w:"approach",m:"（問題などへの）取り組み方"},{n:168,s:3,w:"common",m:"共通の"},{n:169,s:3,w:"introduce",m:"（制度など）を導入する"},{n:170,s:3,w:"caution",m:"注意"},
+{n:171,s:3,w:"signal",m:"合図"},{n:172,s:3,w:"mind",m:"精神，心"},{n:173,s:3,w:"Buddhist",m:"仏教の"},{n:174,s:3,w:"moment",m:"瞬間"},{n:175,s:3,w:"past",m:"過去"},{n:176,s:3,w:"smell",m:"匂いをかぐ，匂いがする"},{n:177,s:3,w:"satisfaction",m:"満足"},{n:178,s:3,w:"satisfy",m:"～を満足させる"},{n:179,s:3,w:"psychologist",m:"心理学者"},{n:180,s:3,w:"concentration",m:"集中"},
+{n:181,s:3,w:"concentrate",m:"集中する，集める"},{n:182,s:3,w:"taste",m:"味"},{n:183,s:3,w:"above",m:"～の上方に，～の上に"},{n:184,s:3,w:"beauty",m:"美，美容，美しさ"},{n:185,s:3,w:"treatment",m:"治療"},{n:186,s:3,w:"nursing home",m:"老人ホーム"},{n:187,s:3,w:"suffer from ～",m:"（病気・飢えなど）に苦しむ"},{n:188,s:3,w:"emotional",m:"感情の，精神的な"},{n:189,s:3,w:"emotion",m:"感情，情緒"},{n:190,s:3,w:"avoid",m:"～を避ける"},
+{n:191,s:3,w:"appearance",m:"外見，容姿，様子"},{n:192,s:3,w:"appear",m:"現れる，～のように見える"},{n:193,s:3,w:"make-up",m:"化粧"},{n:194,s:3,w:"endangered species",m:"絶滅危惧種"},{n:195,s:3,w:"international",m:"国際的な"},{n:196,s:3,w:"preservation",m:"保護"},{n:197,s:3,w:"preserve",m:"～を保護する，保存する"},{n:198,s:3,w:"habitat",m:"生息地"},{n:199,s:3,w:"save",m:"～を救助する，蓄える，（時間や労力を）省く"},{n:200,s:3,w:"raise",m:"～を育てる"},
+{n:201,s:3,w:"protect",m:"～を保護する"},{n:202,s:3,w:"innocent",m:"無実の，無垢な，無邪気な"},{n:203,s:3,w:"farming",m:"農業"},{n:204,s:3,w:"cow",m:"牛"},{n:205,s:3,w:"enemy",m:"敵"},{n:206,s:3,w:"agricultural society",m:"農耕社会"},{n:207,s:3,w:"rat",m:"ねずみ"},{n:208,s:3,w:"deer",m:"鹿"},{n:209,s:3,w:"worship",m:"～を信仰する"},{n:210,s:3,w:"die out",m:"絶滅する"},
+{n:211,s:3,w:"inconvenient",m:"不都合な"},{n:212,s:3,w:"certain～",m:"ある～"},{n:213,s:3,w:"make up",m:"でっちあげる"},{n:214,s:3,w:"crocodile",m:"ワニ"},{n:215,s:3,w:"scared",m:"おびえた，～を恐れる"},{n:216,s:3,w:"riverside",m:"川辺"},{n:217,s:3,w:"UNICEF",m:"ユニセフ（国際連合児童緊急基金）"},{n:218,s:3,w:"well",m:"井戸"},{n:219,s:3,w:"in addition",m:"さらに，その上"},{n:220,s:3,w:"feel sorry for ～",m:"～を気の毒に思う"},
+{n:221,s:3,w:"courage",m:"勇気"},{n:222,s:3,w:"share (A) with (B)",m:"AをBと共有する"},{n:223,s:3,w:"bacteria",m:"細菌"},{n:224,s:3,w:"play a ~ role",m:"～な役割を果たす"},{n:225,s:3,w:"recent",m:"最近の"},{n:226,s:3,w:"placebo",m:"偽薬"},{n:227,s:3,w:"proverb",m:"ことわざ"},{n:228,s:3,w:"sound",m:"健全な，健康な，適切な"},{n:229,s:3,w:"crowd",m:"人混み，群衆"},{n:230,s:3,w:"cruel",m:"冷酷な"},
+{n:231,s:3,w:"bystander",m:"傍観者"},{n:232,s:3,w:"be led into ～",m:"～へと導かれる"},{n:233,s:3,w:"lead-led-led",m:"～を導く，案内する"},{n:234,s:3,w:"individual",m:"個々の，個別の，個人の"},{n:235,s:3,w:"be likely to ～",m:"～しそうである"},{n:236,s:3,w:"now that S＋V～",m:"もう～なので"},{n:237,s:3,w:"article",m:"記事"},{n:238,s:3,w:"be sure to ～",m:"きっと～する"},
+// No.4
+{n:1,s:4,w:"central",m:"中央の"},{n:2,s:4,w:"activist",m:"活動家"},{n:3,s:4,w:"recommend",m:"～を…として推薦する"},{n:4,s:4,w:"trainee",m:"研修生"},{n:5,s:4,w:"completely",m:"まったく，完全に"},{n:6,s:4,w:"amaze",m:"～を驚嘆させる"},{n:7,s:4,w:"educational",m:"教育の"},{n:8,s:4,w:"explosion",m:"爆発"},{n:9,s:4,w:"president",m:"大統領"},{n:10,s:4,w:"assassinate",m:"～を暗殺する"},
+{n:11,s:4,w:"assassination",m:"暗殺"},{n:12,s:4,w:"confusion",m:"混乱"},{n:13,s:4,w:"divide",m:"～を分割する"},{n:14,s:4,w:"relative",m:"親族"},{n:15,s:4,w:"genocide",m:"大虐殺"},{n:16,s:4,w:"mass",m:"大量の，多数の"},{n:17,s:4,w:"killing",m:"殺すこと"},{n:18,s:4,w:"escape",m:"逃げる"},{n:19,s:4,w:"border",m:"国境"},{n:20,s:4,w:"shockingly",m:"衝撃的なことに"},
+{n:21,s:4,w:"refugee",m:"難民"},{n:22,s:4,w:"hell",m:"地獄"},{n:23,s:4,w:"alive",m:"生きている"},{n:24,s:4,w:"notice",m:"～に気付く"},{n:25,s:4,w:"interpreter",m:"通訳"},{n:26,s:4,w:"unbelievably",m:"信じられないことに"},{n:27,s:4,w:"unexpected",m:"予想外の"},{n:28,s:4,w:"enable (人) to (do)",m:"（人）が～するのを可能にする"},{n:29,s:4,w:"horrible",m:"おぞましい"},{n:30,s:4,w:"civil",m:"国内の"},
+{n:31,s:4,w:"civil war",m:"内戦"},{n:32,s:4,w:"manipulate",m:"～を操る"},{n:33,s:4,w:"prevent",m:"～を防ぐ"},{n:34,s:4,w:"peaceful",m:"平和な"},{n:35,s:4,w:"nation",m:"国，国家"},{n:36,s:4,w:"knowledge",m:"知識"},{n:37,s:4,w:"establish",m:"～を設立する"},{n:38,s:4,w:"attend",m:"～に通う"},{n:39,s:4,w:"grown-up",m:"大人"},{n:40,s:4,w:"survive",m:"～を生き延びる"},
+{n:41,s:4,w:"fall into ~",m:"～に陥る"},{n:42,s:4,w:"set ～ against",m:"～を…と対立させる"},{n:43,s:4,w:"one another",m:"お互い"},{n:44,s:4,w:"比較級 and 比較級",m:"ますます～"},{n:45,s:4,w:"just because …",m:"単に…だからといって"},{n:46,s:4,w:"that is",m:"つまり"},{n:47,s:4,w:"at last",m:"ついに"},{n:48,s:4,w:"stand in line",m:"列に並ぶ"},{n:49,s:4,w:"thanks to ~",m:"～のおかげで"},{n:50,s:4,w:"a lack of ~",m:"～の欠如，～の不足"},
+{n:51,s:4,w:"in other words",m:"言い換えれば"},{n:52,s:4,w:"tell ～ from …",m:"～を…と区別する"},{n:53,s:4,w:"even if …",m:"たとえ…でも"},{n:54,s:4,w:"bargain",m:"バーゲン品，安売りの品"},{n:55,s:4,w:"normal",m:"通常の，普通の，正常な"},{n:56,s:4,w:"abnormal",m:"異常な"},{n:57,s:4,w:"a certain＋(名)",m:"ある（名）"},{n:58,s:4,w:"on sale",m:"売りに出されて"},{n:59,s:4,w:"advertisement",m:"広告"},{n:60,s:4,w:"deal",m:"取引，契約／お買い得，いい買い物"},
+{n:61,s:4,w:"in reality",m:"実際には"},{n:62,s:4,w:"clerk",m:"店員，事務員，係"},{n:63,s:4,w:"anyway",m:"いずれにせよ，ともかく"},{n:64,s:4,w:"liar",m:"うそつき"},{n:65,s:4,w:"politician",m:"政治家"},{n:66,s:4,w:"election campaign",m:"選挙運動"},{n:67,s:4,w:"smooth",m:"円滑な"},{n:68,s:4,w:"peaceful",m:"穏やかな"},{n:69,s:4,w:"cell",m:"細胞"},{n:70,s:4,w:"blood pressure",m:"血圧"},
+{n:71,s:4,w:"breathing",m:"呼吸"},{n:72,s:4,w:"opposite",m:"正反対の，反対側の"},{n:73,s:4,w:"block",m:"～をさえぎる"},{n:74,s:4,w:"fix",m:"～を固定する"},{n:75,s:4,w:"move around",m:"動き回る"},{n:76,s:4,w:"earthquake",m:"地震"},{n:77,s:4,w:"facility",m:"施設"},{n:78,s:4,w:"pour",m:"〈液体，塩など〉を「…へ」注ぐ，移す"},{n:79,s:4,w:"physical",m:"肉体的な，身体の"},{n:80,s:4,w:"mental",m:"精神的な，精神の，心の"},
+{n:81,s:4,w:"elderly people",m:"高齢者"},{n:82,s:4,w:"suffer from ～",m:"～を患う，～に苦しむ"},{n:83,s:4,w:"dementia",m:"認知症"},{n:84,s:4,w:"seal",m:"アザラシ"},{n:85,s:4,w:"overseas",m:"海外へ［に］・海外の"},{n:86,s:4,w:"wheel",m:"車輪"},{n:87,s:4,w:"go forward",m:"前に進む"},{n:88,s:4,w:"recent",m:"最近の"},{n:89,s:4,w:"survey",m:"調査"},{n:90,s:4,w:"respondent",m:"回答者"},
+{n:91,s:4,w:"suggest",m:"～を示唆する，示す，提案する"},{n:92,s:4,w:"besides",m:"さらに，その上"},{n:93,s:4,w:"vet (= veterinarian)",m:"獣医"},{n:94,s:4,w:"ape",m:"類人猿"},{n:95,s:4,w:"flat",m:"平らな"},{n:96,s:4,w:"discovery",m:"発見"},{n:97,s:4,w:"adapt to ～",m:"～に順応する，適応する"},{n:98,s:4,w:"conservation",m:"（自然）保護，保全"},{n:99,s:4,w:"conserve",m:"（自然環境・文化財などを）保護する，保存する"},{n:100,s:4,w:"biologist",m:"生物学者"},
+{n:101,s:4,w:"biology",m:"生物学，生態学"},{n:102,s:4,w:"trap",m:"罠"},{n:103,s:4,w:"integrate",m:"～をまとめる，統合する"},{n:104,s:4,w:"goal",m:"目標"},{n:105,s:4,w:"protect",m:"～を保護する，守る"},{n:106,s:4,w:"rare",m:"まれな，珍しい"},{n:107,s:4,w:"endangered",m:"絶滅の危険にさらされた"},{n:108,s:4,w:"log",m:"（木を）伐採する／（コンピュータに）記録する／丸太"},{n:109,s:4,w:"path",m:"小道，細道"},{n:110,s:4,w:"habitat",m:"生息地"},
+{n:111,s:4,w:"paper",m:"論文"},{n:112,s:4,w:"fix",m:"～を直す，修正する"},{n:113,s:4,w:"be supposed to do",m:"～することになっている"},{n:114,s:4,w:"be not supposed to do",m:"～してはいけないことになっている"},{n:115,s:4,w:"evidence",m:"根拠，証拠"},{n:116,s:4,w:"grammar",m:"文法"},{n:117,s:4,w:"appointment",m:"（面会の）約束／（病院などの）予約"},{n:118,s:4,w:"deadline",m:"締め切り"},{n:119,s:4,w:"etiquette",m:"エチケット，礼儀作法"},{n:120,s:4,w:"custom",m:"慣習"},
+{n:121,s:4,w:"hospitality",m:"もてなし（の心）"},{n:122,s:4,w:"precious",m:"貴重な，高価な"},{n:123,s:4,w:"refresh",m:"気分をさわやかにする"},{n:124,s:4,w:"praise",m:"～を褒める"},{n:125,s:4,w:"offer",m:"～を提供する，申し出る"},{n:126,s:4,w:"serve",m:"（食べ物を）出す"},{n:127,s:4,w:"alive",m:"存続して，絶えないで，生きている"},{n:128,s:4,w:"basis (複: bases)",m:"基本，基準"},{n:129,s:4,w:"remain",m:"～のままである"},{n:130,s:4,w:"unchanged",m:"不変の"},
+{n:131,s:4,w:"consideration",m:"思いやり"},{n:132,s:4,w:"sense of justice",m:"正義感"},{n:133,s:4,w:"quality",m:"質，品質，特質"},{n:134,s:4,w:"pleasant",m:"楽しい"},{n:135,s:4,w:"all through the ages",m:"いつの時代も"},{n:136,s:4,w:"animated movie",m:"アニメ映画"},{n:137,s:4,w:"frequent",m:"頻繁に起こる，よくある"},{n:138,s:4,w:"theme",m:"主題，テーマ"},{n:139,s:4,w:"as well",m:"～もまた，同様に"},{n:140,s:4,w:"creature",m:"生き物"},
+{n:141,s:4,w:"female",m:"女性の，雌の"},{n:142,s:4,w:"male",m:"男性の，雄の"},{n:143,s:4,w:"rhino",m:"サイ（rhinocerosの略）"},{n:144,s:4,w:"donkey",m:"ロバ"},{n:145,s:4,w:"unusual",m:"珍しい，ふつうでない"},{n:146,s:4,w:"companion",m:"仲間"},{n:147,s:4,w:"loneliness",m:"孤独，寂しさ"},{n:148,s:4,w:"lonely",m:"ひとりぼっちの，孤独な"},{n:149,s:4,w:"increasingly",m:"ますます～"},{n:150,s:4,w:"aggressive",m:"攻撃的な"},
+{n:151,s:4,w:"calm ～ down",m:"～をなだめる，落ち着かせる"},{n:152,s:4,w:"zebra",m:"シマウマ"},{n:153,s:4,w:"match",m:"よくつり合う人・物"},{n:154,s:4,w:"original",m:"元の，本来の"},{n:155,s:4,w:"enclosure",m:"囲い，柵"},{n:156,s:4,w:"last",m:"続く，（ものが）もつ"},{n:157,s:4,w:"to one’s surprise",m:"～が驚いたことに"},{n:158,s:4,w:"instantly",m:"すぐに，直ちに"},{n:159,s:4,w:"interspecies",m:"異種間の"},{n:160,s:4,w:"chili (複: chilies)",m:"唐辛子"},
+{n:161,s:4,w:"fruit",m:"果実，実，果物，成果"},{n:162,s:4,w:"originate",m:"起こる，始まる"},{n:163,s:4,w:"diet",m:"（日常の）食事"},{n:164,s:4,w:"nowadays",m:"近頃，最近は"},{n:165,s:4,w:"crew",m:"乗組員，乗務員，仲間，一団"},{n:166,s:4,w:"reach",m:"～に到着する，到達する"},{n:167,s:4,w:"come across",m:"～に遭遇する，偶然出会う"},{n:168,s:4,w:"hot",m:"（料理，香辛料が）辛い"},{n:169,s:4,w:"highly prized",m:"高く評価された"},{n:170,s:4,w:"flavoring food",m:"食品香辛料"},
+{n:171,s:4,w:"relief of pain",m:"痛みの緩和"},{n:172,s:4,w:"spread",m:"広まる"},{n:173,s:4,w:"established",m:"確立された"},{n:174,s:4,w:"establish",m:"設立する，確立させる"},{n:175,s:4,w:"trade route",m:"通商路"},{n:176,s:4,w:"transport",m:"輸送する，運ぶ"},{n:177,s:4,w:"transportation",m:"輸送，輸送機関"},{n:178,s:4,w:"Portuguese",m:"ポルトガル人，ポルトガルの"},{n:179,s:4,w:"trader",m:"貿易商（人）"},{n:180,s:4,w:"chemical",m:"化学物質，化学薬品"},
+{n:181,s:4,w:"chemistry",m:"化学"},{n:182,s:4,w:"trigger",m:"～を促す，～の引き金となる／（銃砲の）引き金"},{n:183,s:4,w:"redden",m:"赤くなる"},{n:184,s:4,w:"sweat",m:"汗をかく"},{n:185,s:4,w:"painful",m:"痛い"},{n:186,s:4,w:"sensation",m:"感覚，感じ"},{n:187,s:4,w:"make use of ～",m:"～を利用する"},{n:188,s:4,w:"substance",m:"物質"},{n:189,s:4,w:"self-defense",m:"自己防衛"},{n:190,s:4,w:"burn",m:"～をやけどさせる，燃やす"},
+{n:191,s:4,w:"show up",m:"現れる，姿を見せる"},{n:192,s:4,w:"bacteria",m:"細菌"},{n:193,s:4,w:"multiply",m:"増える，増殖する，掛け算をする"},{n:194,s:4,w:"rely on (A) to do",m:"（A）が～してくれると頼りにする"},{n:195,s:4,w:"refrigerator",m:"冷蔵庫（略形：fridge）"},{n:196,s:4,w:"appliance",m:"（電気）器具"},{n:197,s:4,w:"available",m:"入手可能な，利用可能な"},{n:198,s:4,w:"cause damage to ～",m:"～に被害をもたらす"},{n:199,s:4,w:"reduce",m:"～を減らす"},{n:200,s:4,w:"destruction",m:"破壊"},
+{n:201,s:4,w:"destroy",m:"～を壊す"},{n:202,s:4,w:"warn",m:"～に警告する"},{n:203,s:4,w:"propose",m:"～を提案する"},{n:204,s:4,w:"approach",m:"取り組み方法，手法，接近"},{n:205,s:4,w:"ocean surface",m:"海水面"},{n:206,s:4,w:"27 degrees Celsius",m:"摂氏27度"},{n:207,s:4,w:"blow ～ upward",m:"～を上へと吹き上げる"},{n:208,s:4,w:"vertically",m:"垂直に"},{n:209,s:4,w:"harmless",m:"害のない"},{n:210,s:4,w:"cyclone",m:"熱帯低気圧"},
+{n:211,s:4,w:"no longer ～",m:"もはや～でない"},{n:212,s:4,w:"fuel",m:"燃料"},{n:213,s:4,w:"billion",m:"10億"},{n:214,s:4,w:"less than ～",m:"～よりも少ない"},{n:215,s:4,w:"recovery",m:"復興，回復"},{n:216,s:4,w:"recover",m:"回復する，立ち直る"},{n:217,s:4,w:"bat",m:"コウモリ"},{n:218,s:4,w:"giraffe",m:"キリン"},{n:219,s:4,w:"deer",m:"シカ（単数複数同形）"},{n:220,s:4,w:"put ～ together",m:"～を結びつける"},
+{n:221,s:4,w:"capital letter",m:"大文字"},{n:222,s:4,w:"enable (A) to do",m:"（A）が～することを可能にする"},{n:223,s:4,w:"invention",m:"発明すること，考案，発明品"},{n:224,s:4,w:"unfair",m:"不公平な"},{n:225,s:4,w:"save",m:"節約する，省く，蓄える，貯蓄する，救助する"},{n:226,s:4,w:"so far",m:"これまでのところ"},{n:227,s:4,w:"date back to ～",m:"～にさかのぼる"},{n:228,s:4,w:"Catholic",m:"カトリックの／カトリック教徒"},{n:229,s:4,w:"priest",m:"司祭，聖職者，僧侶，神官"},{n:230,s:4,w:"the Middle Ages",m:"中世（5～15世紀）"},
+{n:231,s:4,w:"be amazed",m:"驚く"},{n:232,s:4,w:"promotion",m:"促進，推進"},{n:233,s:4,w:"promote",m:"促進する"},{n:234,s:4,w:"sustainable",m:"持続可能な"},{n:235,s:4,w:"sustainability",m:"持続可能性"},{n:236,s:4,w:"environmentally friendly",m:"環境に優しい"},{n:237,s:4,w:"socially considerate",m:"社会に配慮した"},{n:238,s:4,w:"renewable energy",m:"再生可能エネルギー"},{n:239,s:4,w:"quality education",m:"質の高い教育"},{n:240,s:4,w:"ethical",m:"倫理的な"},
+{n:241,s:4,w:"reusable",m:"再利用できる"},{n:242,s:4,w:"take advantage of ~",m:"～を利用する，～につけ込む"},{n:243,s:4,w:"even though ~",m:"～であるにもかかわらず"},{n:244,s:4,w:"awareness",m:"意識，認識"},{n:245,s:4,w:"issue",m:"問題，論点"},{n:246,s:4,w:"according to ~",m:"～によると"},{n:247,s:4,w:"be concerned about ~",m:"～を心配する，～に関心がある"},{n:248,s:4,w:"harm",m:"～に害を与える"},{n:249,s:4,w:"replace A with B",m:"AをBに取り替える"},{n:250,s:4,w:"consumer",m:"消費者"},
+{n:251,s:4,w:"find out ~",m:"～を知る，～を見つけ出す"},{n:252,s:4,w:"advertise",m:"～を宣伝する，広告する"},{n:253,s:4,w:"advertisement",m:"広告"},{n:254,s:4,w:"ingredient",m:"原料，材料，成分"},{n:255,s:4,w:"carbon emission",m:"二酸化炭素排出"},{n:256,s:4,w:"invest in ~",m:"～に投資する"},{n:257,s:4,w:"warning sign",m:"警告の兆候"},{n:258,s:4,w:"ownership",m:"所有，所有権"},{n:259,s:4,w:"be aware of ~",m:"～を意識している"},{n:260,s:4,w:"empower",m:"～に力（権限）を与える"},
+{n:261,s:4,w:"gender equality",m:"男女平等"},{n:262,s:4,w:"precondition",m:"前提条件"},{n:263,s:4,w:"have an impact on ~",m:"～に影響を与える"},{n:264,s:4,w:"as a result of ~",m:"～の結果として"},{n:265,s:4,w:"intend to do",m:"～するつもりである"},{n:266,s:4,w:"in return",m:"その代わりに，お返しに"},{n:267,s:4,w:"means of living",m:"生活の手段，生活の糧"},{n:268,s:4,w:"employment",m:"雇用，就業"},{n:269,s:4,w:"poverty",m:"貧困"},{n:270,s:4,w:"power shortage",m:"電力不足"}
+];
+let queue=[], index=0, correct=0, answered=0, wrong=new Set(), locked=false;
+const $=id=>document.getElementById(id);
+function normalize(s){return s.trim().toLowerCase().replace(/[〜～]/g,"~").replace(/\s+/g," ")}
+function selected(){let r=$("range").value;return words.filter(x=>r==="all"||String(x.s)===r)}
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function start(){let pool=selected();if($("mode").value==="wrong")pool=pool.filter(x=>wrong.has(x.s+"-"+x.n));queue=$("mode").value==="order"?pool.slice():shuffle(pool.slice());index=0;correct=0;answered=0;locked=false;render()}
+function render(){let done=index>=queue.length;$("meaning").textContent=done?"終了！":queue[index].m;$("label").textContent=done?"おつかれさま":`No.${queue[index].s}・No.${queue[index].n}番`; $("answer").value="";$("answer").disabled=done;$("check").disabled=done;$("skip").disabled=done;$("feedback").textContent=done?`今回の正解：${correct} / ${answered}　正答率：${answered?Math.round(correct/answered*100):0}%`:"";$("feedback").className="feedback";$("correct").textContent=correct;$("total").textContent=answered;$("rate").textContent=(answered?Math.round(correct/answered*100):0)+"%";$("left").textContent=queue.length-index;$("bar").style.width=(queue.length?index/queue.length*100:100)+"%";if(!done)$("answer").focus()}
+function check(){if(index>=queue.length||locked)return;let q=queue[index],v=$("answer").value;if(!v.trim())return;answered++;if(normalize(v)===normalize(q.w)){correct++;wrong.delete(q.s+"-"+q.n);$("feedback").textContent="正解！";$("feedback").className="feedback ok";locked=true;setTimeout(()=>{index++;locked=false;render()},550)}else{$("feedback").textContent=`不正解。正解：${q.w}`;$("feedback").className="feedback ng";wrong.add(q.s+"-"+q.n);locked=true;setTimeout(()=>{index++;locked=false;render()},1300)}save()}
+function skip(){if(index>=queue.length)return;wrong.add(queue[index].s+"-"+queue[index].n);index++;render();save()}
+function save(){try{localStorage.setItem("vocabTypingWrong",JSON.stringify([...wrong]))}catch(e){}}
+try{wrong=new Set(JSON.parse(localStorage.getItem("vocabTypingWrong")||"[]"))}catch(e){}
+$("check").addEventListener("click",check);$("skip").addEventListener("click",skip);$("restart").addEventListener("click",start);$("range").addEventListener("change",start);$("mode").addEventListener("change",start);$("answer").addEventListener("keydown",e=>{if(e.key==="Enter")check()});
+$("showWrong").addEventListener("click",()=>{let box=$("wrongList");box.classList.toggle("hidden");let list=words.filter(x=>wrong.has(x.s+"-"+x.n));box.innerHTML=list.length?`<table><thead><tr><th>範囲</th><th>日本語</th><th>正解</th></tr></thead><tbody>${list.map(x=>`<tr><td>No.${x.s} ${x.n}</td><td>${x.m}</td><td>${x.w}</td></tr>`).join("")}</tbody></table>`:"<p>間違えた単語はまだありません。</p>"});
+start();
+</script>
+</body>
+</html>
